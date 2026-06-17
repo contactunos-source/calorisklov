@@ -77,19 +77,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Calorisk — AI Food Scanner for Instant Nutrition" },
+      {
+        name: "description",
+        content:
+          "Calorisk uses AI to analyze any food photo and instantly show calories, protein, carbs, and fat.",
+      },
+      { property: "og:title", content: "Calorisk — AI Food Scanner" },
+      {
+        property: "og:description",
+        content: "Scan your meal. Know your nutrition instantly.",
+      },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Calorisk" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: appCss,
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700;800&display=swap",
       },
     ],
   }),
