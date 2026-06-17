@@ -10,7 +10,7 @@ This repo is designed to be deployed: **Lovable → GitHub → Vercel**, using *
 
 ### 1. Set up your Supabase project
 1. Go to [supabase.com](https://supabase.com) → your project → **SQL Editor** → **New query**.
-2. Open the file `supabase/migrations/0001_profiles_setup.sql` from this repo.
+2. Open the file `docs/supabase-setup.sql` from this repo.
 3. Copy the entire contents, paste into the SQL Editor, click **Run**.
    This creates the `profiles` table, security rules, and an auto-trigger that creates a profile when someone signs up.
 
