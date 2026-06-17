@@ -1,4 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { z } from "zod";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,7 +26,71 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
+const signupSchema = z.object({
+  first_name: z.string().trim().min(1, "First name is required").max(50),
+  last_name: z.string().trim().min(1, "Last name is required").max(50),
+  email: z.string().trim().email("Enter a valid email").max(255),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72),
+});
+
 function Landing() {
+  const navigate = useNavigate();
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingEmail, setLoadingEmail] = useState(false);
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "" });
+
+  // Redirect already-signed-in users
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/app" });
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) navigate({ to: "/app" });
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
+
+  async function handleGoogle() {
+    setLoadingGoogle(true);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast.error("Google sign-in failed. Please try again.");
+      setLoadingGoogle(false);
+      return;
+    }
+    if (result.redirected) return; // browser will navigate
+    navigate({ to: "/app" });
+  }
+
+  async function handleEmailSignup(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = signupSchema.safeParse(form);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+    setLoadingEmail(true);
+    const { error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/app`,
+        data: {
+          first_name: parsed.data.first_name,
+          last_name: parsed.data.last_name,
+        },
+      },
+    });
+    setLoadingEmail(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Account created. Check your email to confirm, then sign in.");
+  }
+
   return (
     <div className="min-h-screen bg-white font-sans text-foreground antialiased">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
@@ -52,10 +121,12 @@ function Landing() {
             <div className="mt-6 space-y-3">
               <button
                 type="button"
-                className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#e5e7eb] bg-white px-4 text-[15px] font-medium text-foreground transition-all duration-200 hover:bg-gray-50 active:scale-[0.985] focus:outline-none"
+                onClick={handleGoogle}
+                disabled={loadingGoogle}
+                className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#e5e7eb] bg-white px-4 text-[15px] font-medium text-foreground transition-all duration-200 hover:bg-gray-50 active:scale-[0.985] focus:outline-none disabled:opacity-60"
               >
                 <span className="text-lg font-bold">G</span>
-                <span>Continue with Google</span>
+                <span>{loadingGoogle ? "Connecting…" : "Continue with Google"}</span>
               </button>
 
               <div className="flex items-center gap-3 py-1">
@@ -64,56 +135,94 @@ function Landing() {
                 <div className="h-px flex-1 bg-[#e5e7eb]" />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleEmailSignup} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-medium text-foreground">
+                      First name
+                    </label>
+                    <input
+                      type="text"
+                      value={form.first_name}
+                      onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                      placeholder="John"
+                      className="h-12 w-full rounded-xl border border-[#e5e7eb] bg-white px-4 text-[15px] text-foreground placeholder:text-[#9ca3af] outline-none transition-all focus:border-[#a0aec0] focus:ring-2 focus:ring-[#a0aec0]/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-medium text-foreground">
+                      Last name
+                    </label>
+                    <input
+                      type="text"
+                      value={form.last_name}
+                      onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                      placeholder="Doe"
+                      className="h-12 w-full rounded-xl border border-[#e5e7eb] bg-white px-4 text-[15px] text-foreground placeholder:text-[#9ca3af] outline-none transition-all focus:border-[#a0aec0] focus:ring-2 focus:ring-[#a0aec0]/20"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="mb-1.5 block text-[13px] font-medium text-foreground">
-                    First name
+                    Email
                   </label>
                   <input
-                    type="text"
-                    placeholder="John"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="you@example.com"
                     className="h-12 w-full rounded-xl border border-[#e5e7eb] bg-white px-4 text-[15px] text-foreground placeholder:text-[#9ca3af] outline-none transition-all focus:border-[#a0aec0] focus:ring-2 focus:ring-[#a0aec0]/20"
                   />
                 </div>
+
                 <div>
                   <label className="mb-1.5 block text-[13px] font-medium text-foreground">
-                    Last name
+                    Password
                   </label>
                   <input
-                    type="text"
-                    placeholder="Doe"
+                    type="password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder="At least 8 characters"
                     className="h-12 w-full rounded-xl border border-[#e5e7eb] bg-white px-4 text-[15px] text-foreground placeholder:text-[#9ca3af] outline-none transition-all focus:border-[#a0aec0] focus:ring-2 focus:ring-[#a0aec0]/20"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-foreground">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  className="h-12 w-full rounded-xl border border-[#e5e7eb] bg-white px-4 text-[15px] text-foreground placeholder:text-[#9ca3af] outline-none transition-all focus:border-[#a0aec0] focus:ring-2 focus:ring-[#a0aec0]/20"
-                />
-              </div>
-
-              <button
-                type="button"
-                className="flex h-12 w-full items-center justify-center rounded-xl bg-[#9ca3af] px-4 text-[15px] font-medium text-white transition-all duration-200 hover:bg-[#6b7280] active:scale-[0.985] focus:outline-none"
-              >
-                Continue
-              </button>
+                <button
+                  type="submit"
+                  disabled={loadingEmail}
+                  className="flex h-12 w-full items-center justify-center rounded-xl bg-brand px-4 text-[15px] font-medium text-brand-foreground transition-all duration-200 hover:opacity-90 active:scale-[0.985] focus:outline-none disabled:opacity-60"
+                >
+                  {loadingEmail ? "Creating account…" : "Continue"}
+                </button>
+              </form>
             </div>
 
             <p className="mt-5 text-center text-[13px] text-[#6b7280]">
               Already have an account?{" "}
-              <a
-                href="#"
+              <button
+                type="button"
+                onClick={async () => {
+                  const parsed = z
+                    .object({
+                      email: z.string().trim().email(),
+                      password: z.string().min(1),
+                    })
+                    .safeParse({ email: form.email, password: form.password });
+                  if (!parsed.success) {
+                    toast.error("Enter your email and password to sign in.");
+                    return;
+                  }
+                  setLoadingEmail(true);
+                  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+                  setLoadingEmail(false);
+                  if (error) toast.error(error.message);
+                }}
                 className="font-semibold text-[#3b82f6] transition-colors hover:underline"
               >
                 Sign in
-              </a>
+              </button>
             </p>
           </div>
         </section>
