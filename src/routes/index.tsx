@@ -6,6 +6,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
+    component: () => (
+  <div style={{ padding: 40, textAlign: "center" }}>
+    <h1>Calorisk</h1>
+    <p>AI Food Scanner</p>
+
+    <button>Sign in with Google</button>
+    <button>Sign up</button>
+  </div>
+)
     meta: [
       { title: "Calorisk — AI Food Scanner for Instant Nutrition" },
       {
